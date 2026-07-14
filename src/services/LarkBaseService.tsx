@@ -5,6 +5,8 @@ const LarkBaseService = async () => {
   const currentTableName = await table.getName(); //current table name
   const fieldList = await table.getFieldMetaList();  //field header
   const tableList= await bitable.base.getTableMetaList(); //table list
+  const activeView= await table.getActiveView();
+
 
   const fields = await table.getRecordsByPage({
     pageSize: 100,
@@ -12,12 +14,14 @@ const LarkBaseService = async () => {
   //   const attachmentFields = await table.getFieldListByType<IAttachmentField>(
   //     FieldType.Attachment,
   //   );
+
   const returnObj = {
     tableId: table.id,
     tableList: tableList,
     currentTableName: currentTableName,
     fields: fields,
     fieldList : fieldList,
+    activeView: activeView,
   };
   return returnObj;
 };

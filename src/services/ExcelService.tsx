@@ -11,6 +11,7 @@ const ExcelService = (data: LarkBaseData) => {
     id: field.id,
     width: 20
   }));
+  sheet.addRows([])
 
   // const returnObj = {
   //     sheet: sheet,
