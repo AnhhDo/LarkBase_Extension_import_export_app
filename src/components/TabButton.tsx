@@ -35,7 +35,7 @@ const TabButton = () => {
       <TabsContent value="export" className="flex-col justify-items-center">
         <p>Chọn table bạn muốn export</p>
 
-        <SelectTable />
+        <SelectTable tableList={data?.tableList?? []}/>
 
         <Button size="sm" variant="outline">
           Chọn hết

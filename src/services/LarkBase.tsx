@@ -2,9 +2,8 @@ import { bitable } from "@lark-base-open/js-sdk";
 
 const LarkBase = async () => {
   const table = await bitable.base.getActiveTable(); //active table
-  const currentTableName = await table.getName(); //table name
+  const currentTableName = await table.getName(); //current table name
   const fieldList = await table.getFieldMetaList();  //field header
-
   const tableList= await bitable.base.getTableMetaList(); //table list
 
   const fields = await table.getRecordsByPage({

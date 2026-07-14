@@ -7,23 +7,26 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-const SelectTable = () => {
-  const items = [
-    { label: "Light", value: "light" },
-    { label: "Dark", value: "dark" },
-    { label: "System", value: "system" },
-  ];
+interface TableInfo {
+    id: string,
+    name: string
+}
 
+interface SelectTableProps {
+  tableList: TableInfo[];
+}
+
+const SelectTable = ({tableList}: SelectTableProps) => {
   return (
-    <Select items={items}>
+    <Select>
       <SelectTrigger className="w-[180px]">
-        <SelectValue placeholder="Theme" />
+        <SelectValue placeholder="Chọn bảng" />
       </SelectTrigger>
       <SelectContent alignItemWithTrigger={false}>
         <SelectGroup>
-          {items.map((item) => (
-            <SelectItem key={item.value} value={item.value}>
-              {item.label}
+          {tableList.map((table) => (
+            <SelectItem key={table.id} value={table.name}>
+              {table.name}
             </SelectItem>
           ))}
         </SelectGroup>
