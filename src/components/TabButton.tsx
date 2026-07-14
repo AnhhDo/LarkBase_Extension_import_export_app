@@ -6,6 +6,7 @@ import GroupCheckbox from "./GroupCheckbox";
 import RadioGroupFilter from "./RadioGroupFilter";
 import { FileDropzone } from "./FileDropZone";
 import LarkBaseService from "@/services/LarkBaseService";
+import ExcelService from "@/services/ExcelService";
 
 const TabButton = () => {
   type LarkBaseData = Awaited<ReturnType<typeof LarkBaseService>>;
@@ -13,12 +14,24 @@ const TabButton = () => {
 
   useEffect(() => {
     async function load() {
-      const result = await LarkBaseService();
-      setData(result);
+      const BaseData = await LarkBaseService();
+      setData(BaseData);
     }
 
     load();
   }, []);
+
+  const handleExport = async () => {
+    if(!data) return;
+    const url = await ExcelService(data)
+
+     const a = document.createElement("a");
+  a.href = url;
+  a.download = `${data.currentTableName}.xlsx`;
+  a.click();
+
+  URL.revokeObjectURL(url);
+  }
 
   return (
     <Tabs defaultValue="import">
@@ -40,7 +53,7 @@ const TabButton = () => {
 
         <RadioGroupFilter />
 
-        <Button size="lg" variant="outline">
+        <Button size="lg" variant="outline" onClick={handleExport}>
           Export
         </Button>
       </TabsContent>
