@@ -9,8 +9,7 @@ function App() {
       const LarkData = await LarkBaseService();
       const ExcelData = await ExcelService(LarkData);
       console.log(LarkData);
-      console.log(ExcelData);
-      console.log(ExcelData.worksheets)
+      console.log(ExcelData)
     }
 
     load();
