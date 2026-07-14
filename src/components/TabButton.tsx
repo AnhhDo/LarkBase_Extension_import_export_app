@@ -27,6 +27,9 @@ const TabButton = () => {
         <TabsTrigger value="export">Export</TabsTrigger>
       </TabsList>
       <TabsContent value="import">
+        <p>1. Export file to make changes</p>
+        <Button variant="outline">Export</Button>
+        <p>2. Import file to apply changes</p>
         <FileDropzone />
       </TabsContent>
       <TabsContent value="export" className="flex-col justify-items-center">

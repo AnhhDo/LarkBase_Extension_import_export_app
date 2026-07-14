@@ -21,6 +21,8 @@ interface GroupCheckboxProps {
 }
 
 const GroupCheckbox = ({ fieldList }: GroupCheckboxProps) => {
+
+
   return (
     <FieldSet>
       <FieldLabel>Trường xuất</FieldLabel>
