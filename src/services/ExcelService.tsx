@@ -22,8 +22,11 @@ const ExcelService = () => {
         id: field.id
     }))
 
-    console.log(sheet)
-    console.log(workbook.getWorksheet('Sheet 1'))
+    const returnObj = {
+        sheet: sheet,
+        sheetData: workbook.getWorksheet('Sheet1')
+    }
+    return returnObj
 }
 
 export default ExcelService;

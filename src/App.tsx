@@ -1,13 +1,15 @@
 import { useEffect } from "react";
-import LarkBase from "./services/LarkBaseService";
 import TabButton from "./components/TabButton";
+import LarkBaseService from "./services/LarkBaseService";
+import ExcelService from "./services/ExcelService";
 
 function App() {
   useEffect(() => {
     async function load() {
-      const data = await LarkBase();
-
-      console.log(data);
+      const LarkData = await LarkBaseService();
+      const ExcelData = await ExcelService();
+      console.log(LarkData);
+      console.log(ExcelData)
     }
 
     load();
