@@ -21,8 +21,6 @@ interface GroupCheckboxProps {
 }
 
 const GroupCheckbox = ({ fieldList }: GroupCheckboxProps) => {
-
-
   return (
     <FieldSet>
       <FieldLabel>Trường xuất</FieldLabel>
@@ -30,7 +28,7 @@ const GroupCheckbox = ({ fieldList }: GroupCheckboxProps) => {
         Chọn các trường bạn muốn xuất thành file excel
       </FieldDescription>
       <FieldGroup>
-        <Button size="sm" variant="outline">
+        <Button variant="outline">
           Chọn hết
         </Button>
         {fieldList.map((field) => (

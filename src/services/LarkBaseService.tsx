@@ -1,6 +1,6 @@
 import { bitable } from "@lark-base-open/js-sdk";
 
-const LarkBase = async () => {
+const LarkBaseService = async () => {
   const table = await bitable.base.getActiveTable(); //active table
   const currentTableName = await table.getName(); //current table name
   const fieldList = await table.getFieldMetaList();  //field header
@@ -22,4 +22,4 @@ const LarkBase = async () => {
   return returnObj;
 };
 
-export default LarkBase;
+export default LarkBaseService;
