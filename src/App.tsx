@@ -7,9 +7,10 @@ function App() {
   useEffect(() => {
     async function load() {
       const LarkData = await LarkBaseService();
-      const ExcelData = await ExcelService();
+      const ExcelData = await ExcelService(LarkData);
       console.log(LarkData);
-      console.log(ExcelData)
+      console.log(ExcelData);
+      console.log(ExcelData.worksheets)
     }
 
     load();

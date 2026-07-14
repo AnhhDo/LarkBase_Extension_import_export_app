@@ -1,32 +1,22 @@
-import { useState, useEffect } from 'react';
-import ExcelJS from 'exceljs'
-import LarkBaseService from './LarkBaseService';
+import ExcelJS from "exceljs";
+import LarkBaseService from "./LarkBaseService";
 
-const ExcelService = () => {
-    type LarkBaseData  =  Awaited<ReturnType<typeof LarkBaseService>>;
-  const [data, setData] = useState<LarkBaseData | null>(null);
+type LarkBaseData = Awaited<ReturnType<typeof LarkBaseService>>;
 
-  useEffect(()=> {
-    async function getData() {
-        const result = await LarkBaseService();
-        setData(result)
-    }
+const ExcelService = (data: LarkBaseData) => {
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet("Sheet 1");
+  sheet.columns = (data?.fieldList ?? []).map((field) => ({
+    header: field.name,
+    id: field.id,
+    width: 20
+  }));
 
-    getData()
-  },[])
-
-    const workbook = new ExcelJS.Workbook();
-    const sheet = workbook.addWorksheet('Sheet 1')
-    sheet.columns= (data?.fieldList?? []).map(field => ({
-        header: field.name,
-        id: field.id
-    }))
-
-    const returnObj = {
-        sheet: sheet,
-        sheetData: workbook.getWorksheet('Sheet1')
-    }
-    return returnObj
-}
+  // const returnObj = {
+  //     sheet: sheet,
+  //     sheetData: workbook.getWorksheet('Sheet1')
+  // }
+  return workbook;
+};
 
 export default ExcelService;
