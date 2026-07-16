@@ -37,8 +37,8 @@ const ExcelService = async (data: LarkBaseData) => {
   const blob = new Blob([buffer], {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   });
-
-  return URL.createObjectURL(blob);
+  const url = URL.createObjectURL(blob)
+  return url ;
 };
 
 export default ExcelService;
