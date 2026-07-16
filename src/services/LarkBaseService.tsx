@@ -5,6 +5,7 @@ const LarkBaseService = async () => {
   const currentTableName = await table.getName(); //current table name
   const fieldList = await table.getFieldMetaList();  //field header
   const tableList= await bitable.base.getTableMetaList(); //table list
+  const view = await table.getActiveView()
 
   const fields = await table.getRecordsByPage({
     pageSize: 100,
@@ -16,6 +17,7 @@ const LarkBaseService = async () => {
     currentTableName: currentTableName,
     fields: fields,
     fieldList : fieldList,
+    view: view,
   };
   return returnObj;
 };
