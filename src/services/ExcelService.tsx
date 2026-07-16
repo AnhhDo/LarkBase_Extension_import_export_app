@@ -11,17 +11,7 @@ const ExcelService = async (data: LarkBaseData) => {
     id: field.id,
     width: 20,
   }));
-  const rows = data.fields.records.map((record) => {
-    const row: Record<string, unknown> = {};
 
-    data.fieldList.forEach((field) => {
-      row[field.id] = record.fields[field.id] ?? "";
-    });
-
-    return row;
-  });
-
-  sheet.addRows(rows);
 
   const buffer = await workbook.xlsx.writeBuffer();
 
