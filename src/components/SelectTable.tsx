@@ -14,6 +14,7 @@ interface TableInfo {
 
 interface SelectTableProps {
   tableList: TableInfo[];
+  // onSelectedChange?: (selectedTable: TableInfo[]) => void
 }
 
 const SelectTable = ({tableList}: SelectTableProps) => {

@@ -22,16 +22,9 @@ const TabButton = () => {
   }, []);
 
   const handleExport = async () => {
-    if(!data) return;
-    const url = await ExcelService(data)
-
-     const a = document.createElement("a");
-  a.href = url;
-  a.download = `${data.currentTableName}.xlsx`;
-  a.click();
-
-  URL.revokeObjectURL(url);
-  }
+    if (!data) return;
+    await ExcelService(data);
+  };
 
   return (
     <Tabs defaultValue="import">
@@ -48,7 +41,7 @@ const TabButton = () => {
       <TabsContent value="export">
         <p>Chọn table bạn muốn export</p>
 
-        <SelectTable tableList={data?.tableList?? []}/>
+        <SelectTable tableList={data?.tableList ?? []} />
         <GroupCheckbox fieldList={data?.fieldList ?? []} />
 
         <RadioGroupFilter />
