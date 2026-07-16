@@ -9,6 +9,7 @@ const LarkBaseService = async () => {
   const tableList = await bitable.base.getTableMetaList(); //table list
   const fields = await table.getRecordsByPage({
     pageSize: 100,
+    viewId: currentView.id
   });
 
   const returnObj = {
