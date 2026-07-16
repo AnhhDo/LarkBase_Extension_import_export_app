@@ -18,7 +18,7 @@ const ExcelService = async (data: LarkBaseData) => {
     width: 20,
   }));
 
-  const rows = data.fields.records.map((record) => {
+  const rows = data.fields.map((record) => {
     const row: Record<string, string> = {};
 
     data.fieldList.forEach((field) => {

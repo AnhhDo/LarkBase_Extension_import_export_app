@@ -17,7 +17,7 @@ const LarkBaseService = async () => {
       pageToken: nextToken,
     });
 
-    fields.push(response.records);
+    fields.push(...response.records);
     hasMore = response.hasMore;
     nextToken = response.pageToken;
   }
