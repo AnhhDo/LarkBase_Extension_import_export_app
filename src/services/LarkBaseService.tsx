@@ -18,6 +18,7 @@ const LarkBaseService = async () => {
     fields: fields,
     fieldList : fieldList,
     view: view,
+    currentView: currentView,
   };
   return returnObj;
 };
