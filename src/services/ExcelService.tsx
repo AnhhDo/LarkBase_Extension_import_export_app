@@ -53,12 +53,9 @@ const ExcelService = async (data: LarkBaseData) => {
 
   const url = URL.createObjectURL(blob);
 
-  return url
   const a = document.createElement("a");
   a.href = url;
   a.download = `${data.currentTableName}.xlsx`;
-  a.click();
-
   URL.revokeObjectURL(url);
 };
 
