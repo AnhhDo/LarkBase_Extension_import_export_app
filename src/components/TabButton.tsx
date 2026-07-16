@@ -23,7 +23,11 @@ const TabButton = () => {
 
   const handleExport = async () => {
     if (!data) return;
-    await ExcelService(data);
+    const downloadURL = await ExcelService(data);
+    const a = document.createElement('a')
+    a.href=downloadURL
+    a.download = `${data.currentTableName}.xlsx`
+    URL.revokeObjectURL(downloadURL);
   };
 
   return (

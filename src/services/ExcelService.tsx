@@ -3,44 +3,31 @@ import LarkBaseService from "./LarkBaseService";
 
 type LarkBaseData = Awaited<ReturnType<typeof LarkBaseService>>;
 
-type LarkFieldValue = {
+type RichTextCell = {
   type: string;
   text: string;
-};
-
-type LarkRecord = {
-  fields: Record<string, LarkFieldValue[] | null | undefined>;
-  recordId: string;
 };
 
 const ExcelService = async (data: LarkBaseData) => {
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet("Sheet 1");
 
-  sheet.columns = (data?.fieldList ?? []).map((field) => ({
+  sheet.columns = data.fieldList.map((field) => ({
     header: field.name,
-    id: field.id,
+    key: field.id,
     width: 20,
   }));
 
-  const records = (data?.fields?.records ?? []) as LarkRecord[];
-
-  const rows = records.map((record: LarkRecord) => {
-    const rowObj: Record<string, string> = {};
+  const rows = data.fields.records.map((record) => {
+    const row: Record<string, string> = {};
 
     data.fieldList.forEach((field) => {
-      const value = record.fields?.[field.id];
+      const cell = record.fields[field.id] as RichTextCell[] | null;
 
-      if (Array.isArray(value)) {
-        rowObj[field.id] = value
-          .map((item: LarkFieldValue) => item.text ?? "")
-          .join("");
-      } else {
-        rowObj[field.id] = "";
-      }
+      row[field.id] = cell?.[0]?.text ?? "";
     });
 
-    return rowObj;
+    return row;
   });
 
   sheet.addRows(rows);
@@ -51,12 +38,7 @@ const ExcelService = async (data: LarkBaseData) => {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   });
 
-  const url = URL.createObjectURL(blob);
-
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${data.currentTableName}.xlsx`;
-  URL.revokeObjectURL(url);
+  return URL.createObjectURL(blob);
 };
 
 export default ExcelService;
