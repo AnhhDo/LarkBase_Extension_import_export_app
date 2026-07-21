@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import SelectTable from "./SelectTable";
@@ -21,6 +21,13 @@ const TabButton = () => {
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
   const [resultOpen, setResultOpen] = useState(false);
+  // setImporting is async, so a fast double-click could slip through before
+  // the button visually disables. This ref blocks a second call immediately.
+  const importingRef = useRef(false);
+  // FileDropzone keeps its own "files shown" state internally. Bumping this
+  // key remounts it after a successful import so the old file visibly
+  // disappears too, instead of just the mapping/Import button vanishing.
+  const [dropzoneKey, setDropzoneKey] = useState(0);
 
   useEffect(() => {
     async function load() {
@@ -75,15 +82,24 @@ const TabButton = () => {
 
   const handleImport = async () => {
     if (!excelData || excelData.rows.length === 0) return;
+    if (importingRef.current) return; // already running, ignore extra clicks
+    importingRef.current = true;
     setImporting(true);
     try {
       const res = await ImportService(excelData.rows, mapping);
       setResult(res);
       setResultOpen(true);
+      // Clear the parsed file + mapping once it's gone through. Leaving
+      // them in place invited an accidental second click on "Import" to
+      // push the exact same rows again.
+      setExcelData(null);
+      setMapping([]);
+      setDropzoneKey((k) => k + 1);
     } catch (err) {
       setResult({
         total: excelData.rows.length,
         successCount: 0,
+        skippedCount: 0,
         errorCount: excelData.rows.length,
         errorRows: [
           {
@@ -95,6 +111,7 @@ const TabButton = () => {
       setResultOpen(true);
     } finally {
       setImporting(false);
+      importingRef.current = false;
     }
   };
 
@@ -113,7 +130,7 @@ const TabButton = () => {
         </Button>
 
         <p className="mt-4">2. Import file to apply changes</p>
-        <FileDropzone onParsed={setExcelData} />
+        <FileDropzone key={dropzoneKey} onParsed={setExcelData} />
 
         <ColumnMapper
           mapping={mapping}

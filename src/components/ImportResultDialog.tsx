@@ -7,8 +7,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, XCircle } from "lucide-react";
-import type { ImportResult } from "../services/ImportService";
+import { CheckCircle2, XCircle, SkipForward } from "lucide-react";
+import type { ImportResult } from "@/services/ImportService";
 
 interface ImportResultDialogProps {
   open: boolean;
@@ -38,6 +38,13 @@ export function ImportResultDialog({
             <CheckCircle2 className="h-5 w-5 text-green-600" />
             <span className="text-sm">
               <strong>{result.successCount}</strong> dòng import thành công
+            </span>
+          </div>
+          <div className="flex items-center gap-2 rounded-md border p-3">
+            <SkipForward className="h-5 w-5 text-amber-600" />
+            <span className="text-sm">
+              <strong>{result.skippedCount}</strong> dòng bị bỏ qua vì đã tồn
+              tại trong bảng
             </span>
           </div>
           <div className="flex items-center gap-2 rounded-md border p-3">
