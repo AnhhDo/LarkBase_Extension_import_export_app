@@ -20,7 +20,7 @@ interface SelectTableProps {
 const SelectTable = ({tableList}: SelectTableProps) => {
   return (
     <Select>
-      <SelectTrigger className="w-[180px]">
+      <SelectTrigger className="w-45">
         <SelectValue placeholder="Chọn bảng" />
       </SelectTrigger>
       <SelectContent alignItemWithTrigger={false}>
