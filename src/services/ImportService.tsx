@@ -1,3 +1,4 @@
+import { FieldType } from "@lark-base-open/js-sdk";
 import LarkBaseService, { type LarkRecord } from "./LarkBaseService";
 
 /**
@@ -18,8 +19,9 @@ export interface ImportErrorRow {
 
 export interface ImportResult {
   total: number;
-  successCount: number;
-  skippedCount: number; // rows that already exist in the table, left untouched
+  successCount: number; // brand-new records inserted
+  updatedCount: number; // existing records patched with new-column data
+  skippedCount: number; // rows that already exist and had nothing new to add
   errorCount: number;
   errorRows: ImportErrorRow[];
 }
@@ -52,38 +54,57 @@ function cellToText(value: unknown): string {
 
 /**
  * Pushes parsed Excel rows into the currently active Larkbase table,
- * using `mapping` to decide which Larkbase field each Excel column feeds.
+ * using `mapping` to decide which Larkbase field each Excel column feeds,
+ * and `newColumnSelections` to decide which unmatched Excel headers should
+ * become brand-new Larkbase fields.
  *
  * Reuses LarkBaseService for both the live table handle to write to and
  * the full set of existing records to check for duplicates, rather than
  * re-implementing table/record fetching here.
  *
- * Before inserting, every incoming row is checked cell-by-cell (across the
- * mapped fields only) against every existing record already in the table.
- * If an existing record matches on all of those fields, the row is skipped
- * instead of inserted, so re-running an import (or importing overlapping
- * data) doesn't create duplicates.
+ * Duplicate/identity checking only ever looks at the *mapped* fields
+ * (`mapping`, i.e. the columns that already exist in Larkbase) — those are
+ * what decide whether an incoming row "is" an existing record. New columns
+ * never participate in that check, since by definition they hold data no
+ * existing record has yet.
  *
- * Only mappings with `include: true` and a chosen `excelColumn` are used.
- * Inserts happen in small chunks; if a chunk fails it's retried row-by-row
- * so we can report exactly which rows failed (without duplicating rows
- * that succeeded in an earlier chunk).
+ * - If a row's identity fields don't match any existing record, it's
+ *   inserted as a new record (with both mapped and new-column values).
+ * - If a row's identity fields DO match an existing record, that row is
+ *   never re-inserted (its mapped fields already match, exactly). But if
+ *   the row carries data for a selected new column, the existing record is
+ *   patched with just that data instead of being skipped outright — this
+ *   is how "the row exists but a column/cell is missing" gets backfilled.
+ * - If a row matches and has no new-column data to add, it's skipped as
+ *   a true duplicate.
+ *
+ * Inserts/updates happen in small chunks; if a chunk fails it's retried
+ * row-by-row so we can report exactly which rows failed (without
+ * duplicating/re-patching rows that already succeeded in an earlier chunk).
  */
 const ImportService = async (
   rows: Record<string, string>[],
-  mapping: ColumnMapping[]
+  mapping: ColumnMapping[],
+  newColumnSelections: Record<string, boolean> = {}
 ): Promise<ImportResult> => {
   const activeMappings = mapping.filter((m) => m.include && m.excelColumn);
+  const newColumnHeaders = Object.keys(newColumnSelections).filter(
+    (h) => newColumnSelections[h]
+  );
 
   const result: ImportResult = {
     total: rows.length,
     successCount: 0,
+    updatedCount: 0,
     skippedCount: 0,
     errorCount: 0,
     errorRows: [],
   };
 
-  if (rows.length === 0 || activeMappings.length === 0) {
+  if (
+    rows.length === 0 ||
+    (activeMappings.length === 0 && newColumnHeaders.length === 0)
+  ) {
     return result;
   }
 
@@ -93,49 +114,122 @@ const ImportService = async (
   const { table, fields } = await LarkBaseService();
   const existingRecords = fields.records ?? [];
 
-  const mappedFieldIds = activeMappings.map((m) => m.larkFieldId).sort();
+  // Create a Larkbase field for each newly-selected Excel column. If a
+  // field with that name already exists (e.g. created by a previous import
+  // run this session, or the user unticked an auto-matched row so it shows
+  // up as "new" here) reuse it instead of failing. A column we truly can't
+  // create or find is logged and simply left out of the import, rather than
+  // aborting the whole run.
+  const newColumnFieldIds: { excelColumn: string; larkFieldId: string }[] = [];
+  for (const header of newColumnHeaders) {
+    try {
+      const fieldId = await table.addField({
+        type: FieldType.Text,
+        name: header,
+      });
+      newColumnFieldIds.push({ excelColumn: header, larkFieldId: fieldId });
+    } catch {
+      try {
+        const existingField = await table.getFieldByName(header);
+        newColumnFieldIds.push({
+          excelColumn: header,
+          larkFieldId: existingField.id,
+        });
+      } catch (err) {
+        console.error(`Không thể tạo cột "${header}" trong Larkbase:`, err);
+      }
+    }
+  }
+
+  const identityMappings = activeMappings.map((m) => ({
+    excelColumn: m.excelColumn as string,
+    larkFieldId: m.larkFieldId,
+  }));
+  const writeMappings = [...identityMappings, ...newColumnFieldIds];
+
+  if (writeMappings.length === 0) {
+    return result;
+  }
+
+  const mappedFieldIds = identityMappings.map((m) => m.larkFieldId).sort();
 
   const buildSignature = (fieldValues: Record<string, string>): string =>
     mappedFieldIds.map((id) => (fieldValues[id] ?? "").trim()).join("\u0001");
 
-  const buildFieldsFromRow = (row: Record<string, string>) => {
+  const buildFieldsFromRow = (
+    row: Record<string, string>,
+    entries: { excelColumn: string; larkFieldId: string }[]
+  ) => {
     const fieldValues: Record<string, string> = {};
-    activeMappings.forEach((m) => {
-      const excelColumn = m.excelColumn as string;
-      fieldValues[m.larkFieldId] = row[excelColumn] ?? "";
+    entries.forEach((m) => {
+      fieldValues[m.larkFieldId] = row[m.excelColumn] ?? "";
     });
     return fieldValues;
   };
 
-  const existingSignatures = new Set<string>();
-  existingRecords.forEach((rec: LarkRecord) => {
-    const fieldValues: Record<string, string> = {};
-    mappedFieldIds.forEach((id) => {
-      fieldValues[id] = cellToText(rec.fields[id]);
+  // Map each existing record's identity signature to the record itself
+  // (rather than just a Set of signatures) so a matching incoming row can
+  // be used to patch that record, not just be flagged as a duplicate.
+  const existingBySignature = new Map<string, LarkRecord>();
+  if (mappedFieldIds.length > 0) {
+    existingRecords.forEach((rec: LarkRecord) => {
+      const fieldValues: Record<string, string> = {};
+      mappedFieldIds.forEach((id) => {
+        fieldValues[id] = cellToText(rec.fields[id]);
+      });
+      const signature = buildSignature(fieldValues);
+      if (!existingBySignature.has(signature)) {
+        existingBySignature.set(signature, rec);
+      }
     });
-    existingSignatures.add(buildSignature(fieldValues));
-  });
+  }
 
   const toInsert: { fields: Record<string, string>; rowIndex: number }[] = [];
+  const toUpdate: {
+    recordId: string;
+    fields: Record<string, string>;
+    rowIndex: number;
+  }[] = [];
+
   rows.forEach((row, idx) => {
-    const fieldValues = buildFieldsFromRow(row);
-    const signature = buildSignature(fieldValues);
-    if (existingSignatures.has(signature)) {
+    const signature =
+      mappedFieldIds.length > 0
+        ? buildSignature(buildFieldsFromRow(row, identityMappings))
+        : null;
+    const existing =
+      signature !== null ? existingBySignature.get(signature) : undefined;
+
+    if (existing && existing.recordId) {
+      // The row's identity fields already match this record exactly, so
+      // there's nothing to update there. Only newly-added columns can be
+      // missing data on it.
+      if (newColumnFieldIds.length > 0) {
+        const newValues = buildFieldsFromRow(row, newColumnFieldIds);
+        const hasData = Object.values(newValues).some((v) => v.trim() !== "");
+        if (hasData) {
+          toUpdate.push({
+            recordId: existing.recordId,
+            fields: newValues,
+            rowIndex: idx + 1,
+          });
+          return;
+        }
+      }
       result.skippedCount += 1;
       return;
     }
-    toInsert.push({ fields: fieldValues, rowIndex: idx + 1 });
+
+    toInsert.push({
+      fields: buildFieldsFromRow(row, writeMappings),
+      rowIndex: idx + 1,
+    });
   });
 
-  if (toInsert.length === 0) {
-    return result;
-  }
-
-  // Insert in small chunks rather than one giant batch call. If a whole
-  // file were sent as a single batch and that batch threw after partially
-  // inserting, retrying by re-sending everything one-by-one would
-  // duplicate rows that already went through. Chunking keeps the
-  // "retry individually on failure" fallback scoped to a small slice.
+  // Insert/update in small chunks rather than one giant batch call. If a
+  // whole file were sent as a single batch and that batch threw after
+  // partially going through, retrying by re-sending everything one-by-one
+  // would duplicate/re-patch rows that already succeeded. Chunking keeps
+  // the "retry individually on failure" fallback scoped to a small slice.
   const CHUNK_SIZE = 100;
 
   for (let start = 0; start < toInsert.length; start += CHUNK_SIZE) {
@@ -148,6 +242,29 @@ const ImportService = async (
         try {
           await table.addRecords([{ fields: item.fields }]);
           result.successCount += 1;
+        } catch (err) {
+          result.errorCount += 1;
+          result.errorRows.push({
+            rowIndex: item.rowIndex,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+      }
+    }
+  }
+
+  for (let start = 0; start < toUpdate.length; start += CHUNK_SIZE) {
+    const chunk = toUpdate.slice(start, start + CHUNK_SIZE);
+    try {
+      await table.setRecords(
+        chunk.map((c) => ({ recordId: c.recordId, fields: c.fields }))
+      );
+      result.updatedCount += chunk.length;
+    } catch {
+      for (const item of chunk) {
+        try {
+          await table.setRecord(item.recordId, { fields: item.fields });
+          result.updatedCount += 1;
         } catch (err) {
           result.errorCount += 1;
           result.errorRows.push({

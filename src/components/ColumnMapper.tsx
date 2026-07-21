@@ -6,7 +6,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { PlusCircle } from "lucide-react";
 import type { ColumnMapping } from "@/services/ImportService";
 
 interface ColumnMapperProps {
@@ -117,7 +116,6 @@ export function ColumnMapper({
                   checked={checked}
                   onCheckedChange={(c) => onNewColumnToggle(h, c === true)}
                 />
-                <PlusCircle className="h-4 w-4 shrink-0 text-muted-foreground" />
                 <span className="truncate">{h}</span>
                 <span className="ml-auto shrink-0 text-xs text-muted-foreground">
                   {checked ? "Sẽ tạo cột mới và import" : "Sẽ không được import"}

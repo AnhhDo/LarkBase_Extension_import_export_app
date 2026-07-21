@@ -98,7 +98,11 @@ const TabButton = () => {
     importingRef.current = true;
     setImporting(true);
     try {
-      const res = await ImportService(excelData.rows, mapping);
+      const res = await ImportService(
+        excelData.rows,
+        mapping,
+        newColumnSelections
+      );
       setResult(res);
       setResultOpen(true);
       // Clear the parsed file + mapping once it's gone through. Leaving
@@ -112,6 +116,7 @@ const TabButton = () => {
       setResult({
         total: excelData.rows.length,
         successCount: 0,
+        updatedCount: 0,
         skippedCount: 0,
         errorCount: excelData.rows.length,
         errorRows: [
