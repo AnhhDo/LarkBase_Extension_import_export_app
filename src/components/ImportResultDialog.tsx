@@ -7,7 +7,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, XCircle, SkipForward } from "lucide-react";
+import { CheckCircle2, XCircle, SkipForward, PlusCircle } from "lucide-react";
 import type { ImportResult } from "@/services/ImportService";
 
 interface ImportResultDialogProps {
@@ -22,6 +22,8 @@ export function ImportResultDialog({
   onOpenChange,
 }: ImportResultDialogProps) {
   if (!result) return null;
+
+  const hasNewColumns = result.createdColumns.length > 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -40,6 +42,18 @@ export function ImportResultDialog({
               <strong>{result.successCount}</strong> dòng import thành công
             </span>
           </div>
+
+          {hasNewColumns && (
+            <div className="flex items-start gap-2 rounded-md border p-3">
+              <PlusCircle className="h-5 w-5 shrink-0 text-blue-600" />
+              <span className="text-sm">
+                Đã thêm <strong>{result.createdColumns.length}</strong> cột
+                mới ({result.createdColumns.join(", ")}) và bổ sung dữ liệu
+                cho <strong>{result.updatedCount}</strong> dòng đã tồn tại
+              </span>
+            </div>
+          )}
+
           <div className="flex items-center gap-2 rounded-md border p-3">
             <SkipForward className="h-5 w-5 text-amber-600" />
             <span className="text-sm">

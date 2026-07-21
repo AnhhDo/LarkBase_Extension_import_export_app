@@ -119,6 +119,7 @@ const TabButton = () => {
         updatedCount: 0,
         skippedCount: 0,
         errorCount: excelData.rows.length,
+        createdColumns: [],
         errorRows: [
           {
             rowIndex: 0,

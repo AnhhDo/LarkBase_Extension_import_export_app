@@ -24,6 +24,7 @@ export interface ImportResult {
   skippedCount: number; // rows that already exist and had nothing new to add
   errorCount: number;
   errorRows: ImportErrorRow[];
+  createdColumns: string[]; // Excel headers that became new Larkbase fields
 }
 
 // Larkbase field values come back in different shapes depending on field
@@ -99,6 +100,7 @@ const ImportService = async (
     skippedCount: 0,
     errorCount: 0,
     errorRows: [],
+    createdColumns: [],
   };
 
   if (
@@ -140,6 +142,8 @@ const ImportService = async (
       }
     }
   }
+
+  result.createdColumns = newColumnFieldIds.map((f) => f.excelColumn);
 
   const identityMappings = activeMappings.map((m) => ({
     excelColumn: m.excelColumn as string,
