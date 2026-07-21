@@ -4,13 +4,23 @@ import { Button } from "@/components/ui/button";
 import SelectTable from "./SelectTable";
 import GroupCheckbox from "./GroupCheckbox";
 import RadioGroupFilter from "./RadioGroupFilter";
-import { FileDropzone } from "./FileDropZone";
+import { FileDropzone, type ParsedExcelData } from "./FileDropZone";
+import { ColumnMapper } from "./ColumnMapper";
+import { ImportResultDialog } from "./ImportResultDialog";
 import LarkBaseService from "@/services/LarkBaseService";
 import ExcelService from "@/services/ExcelService";
+import ImportService, { type ColumnMapping, type ImportResult } from "@/services/ImportService";
 
 const TabButton = () => {
   type LarkBaseData = Awaited<ReturnType<typeof LarkBaseService>>;
   const [data, setData] = useState<LarkBaseData | null>(null);
+
+  // Import tab state
+  const [excelData, setExcelData] = useState<ParsedExcelData | null>(null);
+  const [mapping, setMapping] = useState<ColumnMapping[]>([]);
+  const [importing, setImporting] = useState(false);
+  const [result, setResult] = useState<ImportResult | null>(null);
+  const [resultOpen, setResultOpen] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -21,15 +31,74 @@ const TabButton = () => {
     load();
   }, []);
 
+  // The mapping's starting point (auto-matched columns) is *derived* from
+  // data + excelData, not an external system, so we don't compute it in a
+  // useEffect (which would set state after an extra render and can cascade).
+  // Instead we follow React's recommended pattern for state derived from
+  // props/other state: compute it during render and call setState only when
+  // the inputs actually changed, guarded by a ref of the last inputs seen.
+  // See https://react.dev/reference/react/useState#storing-information-from-previous-renders
+  const mappingKey =
+    data && excelData ? `${data.tableId}::${excelData.headers.join("|")}` : null;
+  const [lastMappingKey, setLastMappingKey] = useState<string | null>(null);
+
+  if (mappingKey !== lastMappingKey) {
+    setLastMappingKey(mappingKey);
+
+    if (!data || !excelData) {
+      setMapping([]);
+    } else {
+      const initialMapping: ColumnMapping[] = data.fieldList.map((field) => {
+        const match = excelData.headers.find(
+          (h) => h.trim().toLowerCase() === field.name.trim().toLowerCase()
+        );
+        return {
+          larkFieldId: field.id,
+          larkFieldName: field.name,
+          excelColumn: match ?? null,
+          include: Boolean(match),
+        };
+      });
+      setMapping(initialMapping);
+    }
+  }
+
   const handleExport = async () => {
     if (!data) return;
     const downloadURL = await ExcelService(data);
-    const a = document.createElement('a')
-    a.href=downloadURL
-    a.download = `${data.currentTableName}.xlsx`
-    a.click()
+    const a = document.createElement("a");
+    a.href = downloadURL;
+    a.download = `${data.currentTableName}.xlsx`;
+    a.click();
     URL.revokeObjectURL(downloadURL);
   };
+
+  const handleImport = async () => {
+    if (!excelData || excelData.rows.length === 0) return;
+    setImporting(true);
+    try {
+      const res = await ImportService(excelData.rows, mapping);
+      setResult(res);
+      setResultOpen(true);
+    } catch (err) {
+      setResult({
+        total: excelData.rows.length,
+        successCount: 0,
+        errorCount: excelData.rows.length,
+        errorRows: [
+          {
+            rowIndex: 0,
+            error: err instanceof Error ? err.message : String(err),
+          },
+        ],
+      });
+      setResultOpen(true);
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const hasSelectedMapping = mapping.some((m) => m.include && m.excelColumn);
 
   return (
     <Tabs defaultValue="import">
@@ -39,9 +108,36 @@ const TabButton = () => {
       </TabsList>
       <TabsContent value="import">
         <p>1. Export file to make changes</p>
-        <Button variant="outline">Export</Button>
-        <p>2. Import file to apply changes</p>
-        <FileDropzone />
+        <Button variant="outline" onClick={handleExport}>
+          Export
+        </Button>
+
+        <p className="mt-4">2. Import file to apply changes</p>
+        <FileDropzone onParsed={setExcelData} />
+
+        <ColumnMapper
+          mapping={mapping}
+          excelHeaders={excelData?.headers ?? []}
+          onChange={setMapping}
+        />
+
+        {excelData && (
+          <Button
+            className="mt-4"
+            size="lg"
+            variant="outline"
+            disabled={!hasSelectedMapping || importing}
+            onClick={handleImport}
+          >
+            {importing ? "Đang import..." : "Import"}
+          </Button>
+        )}
+
+        <ImportResultDialog
+          open={resultOpen}
+          result={result}
+          onOpenChange={setResultOpen}
+        />
       </TabsContent>
       <TabsContent value="export">
         <p>Chọn table bạn muốn export</p>
