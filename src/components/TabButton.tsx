@@ -18,6 +18,11 @@ const TabButton = () => {
   // Import tab state
   const [excelData, setExcelData] = useState<ParsedExcelData | null>(null);
   const [mapping, setMapping] = useState<ColumnMapping[]>([]);
+  // Tracks which unmatched Excel columns the user wants created as new
+  // Larkbase fields and imported. Keyed by Excel header.
+  const [newColumnSelections, setNewColumnSelections] = useState<
+    Record<string, boolean>
+  >({});
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
   const [resultOpen, setResultOpen] = useState(false);
@@ -68,7 +73,14 @@ const TabButton = () => {
       });
       setMapping(initialMapping);
     }
+    // A fresh file (or table) means any previous "create as new column"
+    // choices no longer apply to the current header set.
+    setNewColumnSelections({});
   }
+
+  const handleNewColumnToggle = (header: string, checked: boolean) => {
+    setNewColumnSelections((prev) => ({ ...prev, [header]: checked }));
+  };
 
   const handleExport = async () => {
     if (!data) return;
@@ -94,6 +106,7 @@ const TabButton = () => {
       // push the exact same rows again.
       setExcelData(null);
       setMapping([]);
+      setNewColumnSelections({});
       setDropzoneKey((k) => k + 1);
     } catch (err) {
       setResult({
@@ -136,6 +149,8 @@ const TabButton = () => {
           mapping={mapping}
           excelHeaders={excelData?.headers ?? []}
           onChange={setMapping}
+          newColumnSelections={newColumnSelections}
+          onNewColumnToggle={handleNewColumnToggle}
         />
 
         {excelData && (
