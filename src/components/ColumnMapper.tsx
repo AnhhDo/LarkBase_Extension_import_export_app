@@ -13,12 +13,22 @@ interface ColumnMapperProps {
   mapping: ColumnMapping[];
   excelHeaders: string[];
   onChange: (mapping: ColumnMapping[]) => void;
+  // Whether each unmatched Excel column should be created as a new
+  // Larkbase field and imported. Keyed by Excel header.
+  newColumnSelections: Record<string, boolean>;
+  onNewColumnToggle: (header: string, checked: boolean) => void;
 }
 
 // Below the FileDropzone: one row per Larkbase field, a checkbox to include
 // it in the import, and a select to pick which Excel column feeds it.
 // Columns are pre-matched by name where possible (see TabButton).
-export function ColumnMapper({ mapping, excelHeaders, onChange }: ColumnMapperProps) {
+export function ColumnMapper({
+  mapping,
+  excelHeaders,
+  onChange,
+  newColumnSelections,
+  onNewColumnToggle,
+}: ColumnMapperProps) {
   if (mapping.length === 0) return null;
 
   const toggleInclude = (larkFieldId: string, checked: boolean) => {
@@ -96,18 +106,25 @@ export function ColumnMapper({ mapping, excelHeaders, onChange }: ColumnMapperPr
           <div className="border-b bg-muted/50 px-3 py-2 text-xs font-medium text-muted-foreground">
             Cột mới trong file Excel (chưa có trong Larkbase)
           </div>
-          {newColumns.map((h) => (
-            <div
-              key={h}
-              className="flex items-center gap-2 border-b px-3 py-2 text-sm last:border-b-0"
-            >
-              <PlusCircle className="h-4 w-4 shrink-0 text-muted-foreground" />
-              <span className="truncate">{h}</span>
-              <span className="ml-auto shrink-0 text-xs text-muted-foreground">
-                Sẽ không được import
-              </span>
-            </div>
-          ))}
+          {newColumns.map((h) => {
+            const checked = Boolean(newColumnSelections[h]);
+            return (
+              <div
+                key={h}
+                className="flex items-center gap-2 border-b px-3 py-2 text-sm last:border-b-0"
+              >
+                <Checkbox
+                  checked={checked}
+                  onCheckedChange={(c) => onNewColumnToggle(h, c === true)}
+                />
+                <PlusCircle className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <span className="truncate">{h}</span>
+                <span className="ml-auto shrink-0 text-xs text-muted-foreground">
+                  {checked ? "Sẽ tạo cột mới và import" : "Sẽ không được import"}
+                </span>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
